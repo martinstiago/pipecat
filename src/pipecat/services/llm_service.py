@@ -333,6 +333,7 @@ class LLMService(UserTurnCompletionLLMServiceMixin, AIService, Generic[TAdapter]
         self._group_parallel_tools = group_parallel_tools
         self._function_call_timeout_secs = function_call_timeout_secs
         self._enable_async_tool_cancellation: bool = enable_async_tool_cancellation
+        self._reports_ttfat: bool | None = None
         # Turn completion is owned by LLMTurnCompletionUserTurnStopStrategy, which
         # enables it over an LLMUpdateSettingsFrame once the pipeline starts.
         self._filter_incomplete_user_turns: bool = False
@@ -425,6 +426,22 @@ class LLMService(UserTurnCompletionLLMServiceMixin, AIService, Generic[TAdapter]
             The LLM's response as a string, or None if no response is generated.
         """
         raise NotImplementedError(f"run_inference() not supported by {self.__class__.__name__}")
+
+    @property
+    def reports_ttfat(self) -> bool:
+        """Whether this service reports time-to-first-answer-token.
+
+        Speech-to-speech services answer in audio, which has no answer token to
+        measure to, so only text-answering services report it. Derived from
+        :meth:`service_metadata_frame` and cached, since it is read once per
+        streamed token.
+
+        Returns:
+            True if this service reports TTFAT.
+        """
+        if self._reports_ttfat is None:
+            self._reports_ttfat = not self.service_metadata_frame().is_realtime_service
+        return self._reports_ttfat
 
     def service_metadata_frame(self) -> LLMServiceMetadataFrame:
         """The metadata frame this LLM service broadcasts at start.
@@ -696,6 +713,12 @@ class LLMService(UserTurnCompletionLLMServiceMixin, AIService, Generic[TAdapter]
         Args:
             text: The text content from the LLM to push.
         """
+        # Measured before turn-completion filtering, which can hold text back or
+        # drop it entirely — neither says anything about how fast the model
+        # answered.
+        if self.reports_ttfat:
+            await self.stop_ttfat_metrics()
+
         if self._filter_incomplete_user_turns:
             await self._push_turn_text(text)
         else:
