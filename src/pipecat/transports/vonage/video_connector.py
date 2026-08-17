@@ -99,7 +99,9 @@ class VonageVideoConnectorInputTransport(BaseInputTransport):
                 self._connected = True
             except Exception as exc:
                 logger.error(f"Error connecting to Vonage session: {exc}")
-                await self.push_error("Vonage video connector connection error", fatal=True)
+                await self.push_error(
+                    "Vonage video connector connection error", treat_as_permanent=True
+                )
                 return
 
         await self.set_transport_ready(frame)
@@ -154,7 +156,7 @@ class VonageVideoConnectorInputTransport(BaseInputTransport):
             f"Vonage input transport error session={session.id} code={code} description={description}"
         )
         if self._connected:
-            await self.push_error("Vonage video connector error", fatal=True)
+            await self.push_error("Vonage video connector error", treat_as_permanent=True)
 
     async def stop(self, frame: EndFrame) -> None:
         """Stop the Vonage input transport.
@@ -236,7 +238,9 @@ class VonageVideoConnectorOutputTransport(BaseOutputTransport):
                 self._connected = True
             except Exception as exc:
                 logger.error(f"Error connecting to Vonage session: {exc}")
-                await self.push_error("Vonage video connector connection error", fatal=True)
+                await self.push_error(
+                    "Vonage video connector connection error", treat_as_permanent=True
+                )
                 return
 
         await self.set_transport_ready(frame)
@@ -329,7 +333,7 @@ class VonageVideoConnectorOutputTransport(BaseOutputTransport):
             f"Vonage output transport error session={session.id} code={code} description={description}"
         )
         if self._connected:
-            await self.push_error("Vonage video connector error", fatal=True)
+            await self.push_error("Vonage video connector error", treat_as_permanent=True)
 
 
 class VonageVideoConnectorTransport(BaseTransport):
